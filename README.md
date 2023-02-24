@@ -44,7 +44,8 @@ In case the following API description is not sufficient have a look there.
 
    ##### Pyboard, Micropython:
 
-   ![LCD with Pyboard](img/Lcd_I2c8574_PyBoard.png)
+   <img src="img/Lcd_I2c8574_PyBoard.png" width="480" height="201">
+   
    If you wired I2C accordingly, put in your script something like:
    ```
    from machine import I2C
@@ -52,7 +53,8 @@ In case the following API description is not sufficient have a look there.
    ```
    ##### Raspberry Pi Pico, Micropython:
 
-   ![LCD with Pico](img/Lcd_I2c8574_Pico.png)
+   <img src="img/Lcd_I2c8574_Pico.png" width="618" height="201">
+   
    After again wiring like in this Fritzing schema for Pico include the following into you script:
    ```
    from machine import I2C,  Pin          # Raspberry Pi Pico, Micropython
@@ -70,7 +72,8 @@ In case the following API description is not sufficient have a look there.
    ```
    ##### ESP32 NodeMCU, Micropython:
 
-   <img src="img/Lcd_I2c8574_ESP32NodeMCU.png" width="900" height="300">
+   <img src="img/Lcd_I2c8574_ESP32NodeMCU.png" width="571" height="185">
+   
    After wiring like in the Fritzing schema for Pico include the following into you script:
    ```
    from machine import I2C,  Pin          # ESP32 NodeMCU, Micropython
@@ -85,7 +88,7 @@ In case the following API description is not sufficient have a look there.
    If you encounter problems (e.g. no device responding to the scan): Check the I2C channel, try another one if available. Check the pins. Pin numbers on the board may be different to those of the MCU (if in doubt, try them out with LED blinking).  I2C needs pull-up resistors which are activated automatically with the above commands, but may not suffice (MCU-internal pull-up resistors are not very strong, i.e have large Ω values) so you perhaps have to add extra ones in the range 3.3-10 kΩ.
    If your I2C scan returns one or more devices you are almost finished. Find out which one (i.e. which address) is the one of your LCD backpack. If you have a PCF8574 on your backpack then the address is in the range 0x20..0x27 (which is 32..39 decimal) - depending on the soldering of 3 solder-connections (A0, A1 and A2, see this image). By default (no soldering) it's 0x27.
    With a PCF8574A the address range is 0x38..0x3F (i.e. 56..63 decimal), 0x3F by default.
-   ![Backpack](img/Backpack.png)
+   <img src="img/Backpack.png" width="247" height="166">
 
 3. Import the driver and instantiate the lcd class:
    ```

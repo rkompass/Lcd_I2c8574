@@ -1,12 +1,19 @@
-# Implements a HD44780 character LCD connected via PCF8574 on I2C.
-# Should work with ESP8266 and (tested) Pyboard 1.1.
+# Implements a HD44780 character LCD connected via PCF8574 on I2C in Micro-/Circuitpython.
+# Tested on Pyboard 1.1 (Micropython), Raspi Pico (Micropython, Circuitpython)
 #
 # Derived from https://github.com/dhylands/python_lcd by rkompass 2022,
 #    (put everything in one file, removed constants, simplified....) --> ~1.8 K memory consumption,
 #    (new newline logic, added scroll and wrap options)  --> ~2.7 K memory consumption.
-#    (corrected '\\' and '~' characters)  --> ~2.7 K memory consumption.
+#    (corrected '\\' and '~' characters)  --> ~2.7 K memory consumption in Micropython
+#    (extended character set for )  --> ~3.2 K memory consumption in MP.
+#    (adapted for both MP and Circuitpython) --> ~3.5 K memory consumption in Circuitpython
 
-from time import sleep_ms, sleep_us
+try:
+    from time import sleep_us
+except ImportError:              # Circuitpython does not have sleep_us(), we use sleep() for that
+    from time import sleep
+    def sleep_us(us):
+        sleep(us/1000000)
 
 # Implements a HD44780 character LCD connected via PCF8574 on I2C.
 class I2cLcd:
@@ -23,12 +30,12 @@ class I2cLcd:
             self.lines = [bytearray(32 for _ in range(self.nx)) for l in range(self.ny -1)]  # 32 <-- ord(' ')
         self.backl = 0x08
         self.i2c.writeto(self.i2c_addr, bytearray([0]))          # Init I2C
-        sleep_ms(20)                                             # Allow LCD time to powerup
+        sleep_us(20000)                                             # Allow LCD time to powerup
         for _ in range(3):                                       # Send reset 3 times
             self.i2c.writeto(self.i2c_addr, bytearray((0x34, 0x30))) # LCD_FUNCTION_RESET
-            sleep_ms(5)                                          # Need to delay at least 4.1 msec
+            sleep_us(5000)                                          # Need to delay at least 4.1 msec
         self.i2c.writeto(self.i2c_addr, bytearray((0x24, 0x20))) # LCD_FUNCTION, put LCD into 4 bit mode
-        sleep_ms(1)
+        sleep_us(1000)
         self.set_display(False)
         self.clear()     # Sets class variables: self.x = 0; self.y = 0; self.nl = False; self.impl_nl = False
         self._wr(0x06)                           # LCD_ENTRY_MODE | LCD_ENTRY_INC
@@ -135,4 +142,4 @@ class I2cLcd:
         b1 = dbit | self.backl | ((data & 0x0f) << 4)
         self.i2c.writeto(self.i2c_addr, bytearray((b0 | 0x04, b0, b1 | 0x04, b1)))
         if not dbit and data <= 3:            # The home and clear commands require a worst case delay of 4.1 msec
-            sleep_ms(5)
+            sleep_us(5000)

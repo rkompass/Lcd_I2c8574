@@ -23,13 +23,14 @@
 #  0xb4   0xa7   0xb6   0xa3  0x20ac  0xb1       <-- unicode                 #  0x2260  0x394
 # chr(0) chr(1) chr(2) chr(3) chr(4) chr(5)      <-- internal code     
 
-from time import sleep_ms, sleep_us
+try:
+    from time import sleep_us
+except ImportError:              # Circuitpython does not have sleep_ms(), sleep_us(), we use sleep() for that
+    from time import sleep
+    def sleep_us(us):
+        sleep(us/1000000)
 
-_ucodes = '£¥§°±´¶ß÷äöü•€←→√ΣΩαβεθμπρσ'
-_rcodes = b'\x03\x5c\x01\xdf\x05\x00\x02\xe2\xfd\xe1\xef\xf5\xa5\x04\x7f\x7e\xe8\xf6\xf4\xe0\xe2\xe3\xf2\xe4\xf7\xe6\xe5'
-
-
-# Implements a HD44780 character LCD connected via PCF8574 on I2C.
+# Driver class.
 class I2cLcd:
 
     def __init__(self, i2c, i2c_addr=0x27, dim=(16, 2), scroll=True):  # default address of PCF8574 is 0x27
@@ -44,12 +45,12 @@ class I2cLcd:
             self.lines = [bytearray(32 for _ in range(self.nx)) for l in range(self.ny -1)]  # 32 <-- ord(' ')
         self.backl = 0x08
         self.i2c.writeto(self.i2c_addr, bytearray([0]))          # Init I2C
-        sleep_ms(20)                                             # Allow LCD time to powerup
+        sleep_us(20000)                                             # Allow LCD time to powerup
         for _ in range(3):                                       # Send reset 3 times
             self.i2c.writeto(self.i2c_addr, bytearray((0x34, 0x30))) # LCD_FUNCTION_RESET
-            sleep_ms(5)                                          # Need to delay at least 4.1 msec
+            sleep_us(5000)                                          # Need to delay at least 4.1 msec
         self.i2c.writeto(self.i2c_addr, bytearray((0x24, 0x20))) # LCD_FUNCTION, put LCD into 4 bit mode
-        sleep_ms(1)
+        sleep_us(1000)
         self.set_display(False)
         self.clear()     # Sets class variables: self.x = 0; self.y = 0; self.nl = False; self.impl_nl = False
         self._wr(0x06)                           # LCD_ENTRY_MODE | LCD_ENTRY_INC
@@ -65,6 +66,8 @@ class I2cLcd:
         self._idefc(6, b'\x00\x10\x08\x04\x02\x01\x00\x00')  # backslash: \, which was Yen in Japanese ROM
         self._idefc(7, b'\x00\x00\x00\x0d\x12\x00\x00\x00')  # tilde:     ~, which was right arrow
         self.move_to(self.x, self.y)
+        self._ucodes = '£¥§°±´¶ß÷äöü•€←→√ΣΩαβεθμπρσ'
+        self._rcodes = b'\x03\x5c\x01\xdf\x05\x00\x02\xe2\xfd\xe1\xef\xf5\xa5\x04\x7f\x7e\xe8\xf6\xf4\xe0\xe2\xe3\xf2\xe4\xf7\xe6\xe5'
 
     # Clears the LCD display and moves the cursor to the top left.
     def clear(self):
@@ -140,8 +143,8 @@ class I2cLcd:
                 if 15 < oc < 127:
                     if oc ==  92: oc = 6       # select a better sign for \, which was yen, now defined as custom character 6
                     if oc == 126: oc = 7       # select a sign for ~, which was right arrow, now defined as custom character 7
-                elif c in _ucodes:
-                    oc = _rcodes[_ucodes.find(c)]
+                elif c in self._ucodes:
+                    oc = self._rcodes[self._ucodes.find(c)]
                 else:
                     oc = 127
                 self._wr(oc, 1)
@@ -166,4 +169,4 @@ class I2cLcd:
         b1 = dbit | self.backl | ((data & 0x0f) << 4)
         self.i2c.writeto(self.i2c_addr, bytearray((b0 | 0x04, b0, b1 | 0x04, b1)))
         if not dbit and data <= 3:            # The home and clear commands require a worst case delay of 4.1 msec
-            sleep_ms(5)
+            sleep_us(5000)

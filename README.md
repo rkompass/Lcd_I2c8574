@@ -3,14 +3,15 @@
 Micropython drivers for dot matrix character LCD displays with HD44780 controller
 (also called LCD 1602 . . LCD 2004 ). 
 
-The drivers are for displays that are connected via I2C to a PCF8574 backpack that drives the HD44780 controller.
+The drivers are for displays that are connected via I2C to a PCF8574 (or PCF8574A) backpack that drives the HD44780 controller.
 
 The drivers are a rework of Dave Hylands drivers on https://github.com/dhylands/python_lcd.
 
 ### Reworking the drivers attempted at
 
 - Simplicity of installation: Copy and import 1 file.
-- Maximal hardware-independence: Only import is `from time import sleep_ms, sleep_us`.
+- Maximal hardware-independence:
+  Only import is `from time import sleep_us` (or `sleep` with Circuitpython)
   Uses I2C-object at instantiation of the lcd class.
 - Memory savings: Removed C-style constant definitions. Combined and simplified functions.
 - Improved handling of '\n': Corrected a bug. Introduced an optional end argument (like in `print()` with default newline). Delayed linefeed at next character. Delete new line at linefeed.
@@ -19,38 +20,67 @@ The drivers are a rework of Dave Hylands drivers on https://github.com/dhylands/
 
 ### There are currently 3 versions of the driver
 
-- **lcd_i2c8574.py**:   Standard driver.  Includes scrolling.
-  Corrected '\\\\\' and '~' characters, so that all ASCII characters from chr(32) . . chr(126) are displayed.  Only 6 custom characters.
-  Consumes ~2.7 K of RAM.
 - **lcd_i2c8574_m.py**:   Minimal driver.  No scrolling.
   All ASCII characters from chr(32) . . chr(126). Only 6 custom characters.
-  Consumes ~1.8 K of RAM.
+  Consumes 1.8-1.9 K of RAM (in Micropython, ??-2.5 K in Circuitpython).
+- **lcd_i2c8574.py**:   Standard driver.  Includes scrolling.
+  Corrected '\\\\\' and '~' characters, so that all ASCII characters from chr(32) . . chr(126) are displayed.  Only 6 custom characters.
+  Consumes 2.7-3.3 K of RAM (in Micropython, ??-3.6 K in Circuitpython).
 - **lcd_i2c8574_x.py**:   Extended driver.  Added the following characters to standard driver:
-  `'£¥€ §¶ °´• √±÷ äöüß ←→ αβεθμπρσ ΣΩ'`.  No custom characters as they are used for some of these.  Consumes ~3.2 K of RAM.
+  `'£¥€ §¶ °´• √±÷ äöüß ←→ αβεθμπρσ ΣΩ'`.  No custom characters as they are used for some of these.  Consumes 3.2-3.8 K of RAM (in Micropython, ??-4.1 K in Circuitpython).
 
-The drivers are synchronous. The API is slightly changed (see below).
+The drivers work with Micropython and Circuitpython.
 
-There is an extensive test script for each driver version (**lcd_i2c8574_test.py**, **lcd_i2c8574_x_test.py** and **lcd_i2c8574_m_test.py**). In case the following API description is not sufficient have a look there.
+The drivers are synchronous.
+
+There is a **common extensive test script** for all driver versions (**lcd_i2c8574_test.py**) which you may adapt to your needs mostly by adjusting comments.
+In case the following API description is not sufficient have a look there.
 
 ### Installation and API
 
-1. Copy one of the above files to your device.
+1. Copy one (or all three) of the above files to your device.
 
 2. Setup I2C:
-   Pyboard: Wire I2C accordingly and then put in your script something like:
+
+   ##### Pyboard, Micropython:
+
+   Wire I2C accordingly (see the Fritzing schema for pyboard) and then put in your script something like:
    `from machine import I2C`
    `i2c = I2C('Y', freq=100000)`
-   Depending on your hardware you may have to use another id for I2C, specify scl and/or sda pins or use machine.SoftI2C (instead of machine.I2C which is hard I2C). See https://docs.micropython.org/en/latest/library/machine.I2C.html for more info.
-   If you are not sure your I2C is set up correctly, test it with a scan.
-   If you encounter problems: I2C needs pull-up resistors which are activated automatically with the above command, but may not suffice (internal pull-up resistors are not very strong, i.e have large Ω values) so you perhaps have to add extra ones in the range 3.3-10 kΩ.
+
+   ##### Raspberry Pi Pico, Micropython:
+
+   After wiring like in the Fritzing schema for Pico include the following into you script:
+
+   `from machine import I2C,  Pin          # Raspberry Pi Pico, Micropython`
+   `i2c = I2C(0, sda=Pin(0), scl=Pin(1), freq=100000)`
+
+   ##### Raspberry Pi Pico, Circuitpython:
+
+   After wiring like in the Fritzing schema for Pico include the following into you script:
+   `import board                         # Raspberry Pi Pico, Circuitpython`
+   `from busio import I2C`
+   `i2c = I2C(sda=board.GP0, scl=board.GP1)`
+   `while i2c.try_lock():  # CP requires I2C bus locking`
+   `    pass`
+
+   The above statements are in the test script, you activate them by selective commenting in/out.
+   Depending on your hardware you may have to use another id for I2C (e.g. 'X' for pyboard), specify scl and/or sda pins or use `machine.SoftI2C` (instead of `machine.I2C` which is hard I2C). See https://docs.micropython.org/en/latest/library/machine.I2C.html for more info.
+   It is recommended to test your I2C setup with a scan.
+
+   The test script includes a verbose I2C scan that you may use.
+
+   If you encounter problems (e.g. no device responding to the scan): Check the I2C channel, try another one if available. Check the pins. Pin numbers on the board may be different to those of the MCU (if in doubt, try them out with LED blinking).  I2C needs pull-up resistors which are activated automatically with the above commands, but may not suffice (MCU-internal pull-up resistors are not very strong, i.e have large Ω values) so you perhaps have to add extra ones in the range 3.3-10 kΩ.
+   If your I2C scan returns one or more devices you are almost finished. Find out which one (i.e. which address) is the one of your LCD backpack. If you have a PCF8574 on your backpack then the address is in the range 0x20..0x27 (which is 32..39 decimal) - depending on the soldering of 3 solder-connections (A0, A1 and A2, see PCF8574 image) on the board. By default (no soldering) it's 0x27.
+   With a PCF8574A the address range is 0x38..0x3F (i.e. 56..63 decimal), 0x3F by default.
 
 3. Import the driver and instantiate the lcd class:
    `from lcd_i2c8574 import I2cLcd`
    `lcd = I2cLcd(i2c, 0x27, (20, 4))`
    Of course you use `lcd_i2c8574_x` or `lcd_i2c8574_m` for another driver version.
-   `0x27` is the I2C device address of the PCF8574 backpack chip. It may be set to other values by soldering. `i2c_addr=0x27` is the default and can be omitted. `(20, 4)` are the dimensions of my LCD: 20 charaters x 4 lines.
-   Depending on your display you may need (8, 2), (16, 1), (16, 2), (16, 4), (20, 2), (40, 1) or (40, 2). `dim=(16, 2)` is the default and can be omitted
-   Optionally you may specify `scroll=False` in the standard and extended driver to prevent scrolling. This saves some memory (for storage of written lines).
+   Instead of`0x27` you may have to use another number as the I2C device address of your backpack chip as noted above. Note that `i2c_addr=0x27` is a default of the I2cLcd class and can be omitted.
+   `(20, 4)` are the dimensions of my LCD: 20 charaters x 4 lines. Depending on your display you may need other numbers like (8, 2), (16, 1), (16, 2), (16, 4), (20, 2), (40, 1) or (40, 2). `dim=(16, 2)` is the default and again may be omitted
+   Optionally you may specify `scroll=False` in the standard and extended driver to prevent scrolling. This saves some memory.
 
 4. Optionally set light and cursor:
    `lcd.set_display(backl=False)` switches backlight off.
@@ -76,7 +106,7 @@ There is an extensive test script for each driver version (**lcd_i2c8574_test.py
    define two custom characters. 0 and 1 are the RAM slots. We have 7 of them, but slot 6 and 7 are already used to define '\\\\\' and '~'.  Note: All slots are used already in the extended driver.
    The second argument may be a bytes object (like in the above code) or a bytearray. It defines the character pixels bit by bit from top to bottom:
    `lcd.write(chr(0))` writes the character in the 0-th slot, a heart in our case.
-   
+
    ```
    Heart (where .=0, #=1)
    ..... == 0b00000 == 0x00
@@ -89,7 +119,8 @@ There is an extensive test script for each driver version (**lcd_i2c8574_test.py
    ..... == 0b00000 == 0x00
    ```
 
-For more information have a look at the test scripts **lcd_i2c8574_test.py**, **lcd_i2c8574_x_test.py** and **lcd_i2c8574_m_test.py** and at Dave Hylands site https://github.com/dhylands/python_lcd.
+For more information have a look at the test script **lcd_i2c8574_test.py** 
+and perhaps at Dave Hylands site https://github.com/dhylands/python_lcd.
 Note however that the API here is slightly changed compared to python_lcd:
 
 - The LCD dimension now is given as a tuple, e.g. `(20, 4)`.

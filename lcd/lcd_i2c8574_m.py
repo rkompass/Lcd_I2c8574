@@ -8,10 +8,14 @@
 # Displays chr(16) .. chr(126) ASCII character set.
 # Does not scroll the lines.
 
-from time import sleep_ms, sleep_us
-from array import array
+try:
+    from time import sleep_us
+except ImportError:              # Circuitpython does not have sleep_ms(), sleep_us(), we use sleep() for that
+    from time import sleep
+    def sleep_us(us):
+        sleep(us/1000000)
 
-# Implements a HD44780 character LCD connected via PCF8574 on I2C.
+# Driver class.
 class I2cLcd:
 
     def __init__(self, i2c, i2c_addr=0x27, dim=(16, 2)):  # default address of PCF8574 is 0x27
@@ -23,12 +27,12 @@ class I2cLcd:
         self.ny = min(dim[1], 4)
         self.backl = 0x08
         self.i2c.writeto(self.i2c_addr, bytearray([0]))          # Init I2C
-        sleep_ms(20)                                             # Allow LCD time to powerup
+        sleep_us(20000)                                             # Allow LCD time to powerup
         for _ in range(3):                                       # Send reset 3 times
             self.i2c.writeto(self.i2c_addr, bytearray((0x34, 0x30))) # LCD_FUNCTION_RESET
-            sleep_ms(5)                                          # Need to delay at least 4.1 msec
+            sleep_us(5000)                                          # Need to delay at least 4.1 msec
         self.i2c.writeto(self.i2c_addr, bytearray((0x24, 0x20))) # LCD_FUNCTION, put LCD into 4 bit mode
-        sleep_ms(1)
+        sleep_us(1000)
         self.set_display(False)
         self.clear()        # Sets class variables: self.x = 0; self.y = 0; self.nl = False; self.impl_nl = False
         self._wr(0x06)                         # LCD_ENTRY_MODE | LCD_ENTRY_INC
@@ -112,4 +116,4 @@ class I2cLcd:
         b1 = dbit | self.backl | ((data & 0x0f) << 4)
         self.i2c.writeto(self.i2c_addr, bytearray((b0 | 0x04, b0, b1 | 0x04, b1)))
         if not dbit and data <= 3: # The home and clear commands require a worst case delay of 4.1 msec
-            sleep_ms(5)
+            sleep_us(5000)

@@ -11,7 +11,7 @@ The drivers are a rework of Dave Hylands drivers on https://github.com/dhylands/
 
 - Simplicity of installation: Copy and import 1 file.
 - Maximal hardware-independence:
-  Only import is `from time import sleep_us` (or `sleep` with Circuitpython)
+  Only import is `from time import sleep_us` (or `sleep` with Circuitpython).
   Uses I2C-object at instantiation of the lcd class.
 - Memory savings: Removed C-style constant definitions. Combined and simplified functions.
 - Improved handling of '\n': Corrected a bug. Introduced an optional end argument (like in `print()` with default newline). Delayed linefeed at next character. Delete new line at linefeed.
@@ -24,7 +24,7 @@ The drivers are a rework of Dave Hylands drivers on https://github.com/dhylands/
   All ASCII characters from chr(32) . . chr(126). Only 6 custom characters.
   Consumes 1.8-1.9 K of RAM (in Micropython, ??-2.5 K in Circuitpython).
 - **lcd_i2c8574.py**:   Standard driver.  Includes scrolling.
-  Corrected '\\\\\' and '~' characters, so that all ASCII characters from chr(32) . . chr(126) are displayed.  Only 6 custom characters.
+  Corrected '\\\\' and '~' characters, so that all ASCII characters from chr(32) . . chr(126) are displayed.  Only 6 custom characters.
   Consumes 2.7-3.3 K of RAM (in Micropython, ??-3.6 K in Circuitpython).
 - **lcd_i2c8574_x.py**:   Extended driver.  Added the following characters to standard driver:
   `'£¥€ §¶ °´• √±÷ äöüß ←→ αβεθμπρσ ΣΩ'`.  No custom characters as they are used for some of these.  Consumes 3.2-3.8 K of RAM (in Micropython, ??-4.1 K in Circuitpython).
@@ -45,26 +45,29 @@ In case the following API description is not sufficient have a look there.
    ##### Pyboard, Micropython:
 
    Wire I2C accordingly (see the Fritzing schema for pyboard) and then put in your script something like:
-   `from machine import I2C`
-   `i2c = I2C('Y', freq=100000)`
-
+   ```
+   from machine import I2C
+   i2c = I2C('Y', freq=100000)
+   ```
    ##### Raspberry Pi Pico, Micropython:
 
    After wiring like in the Fritzing schema for Pico include the following into you script:
-
-   `from machine import I2C,  Pin          # Raspberry Pi Pico, Micropython`
-   `i2c = I2C(0, sda=Pin(0), scl=Pin(1), freq=100000)`
-
+   ```
+   from machine import I2C,  Pin          # Raspberry Pi Pico, Micropython
+   i2c = I2C(0, sda=Pin(0), scl=Pin(1), freq=100000)
+   ```
    ##### Raspberry Pi Pico, Circuitpython:
 
    After wiring like in the Fritzing schema for Pico include the following into you script:
-   `import board                         # Raspberry Pi Pico, Circuitpython`
-   `from busio import I2C`
-   `i2c = I2C(sda=board.GP0, scl=board.GP1)`
-   `while i2c.try_lock():  # CP requires I2C bus locking`
-   `    pass`
+   ```
+   import board                         # Raspberry Pi Pico, Circuitpython
+   from busio import I2C
+   i2c = I2C(sda=board.GP0, scl=board.GP1)
+   while i2c.try_lock():  # CP requires I2C bus locking
+       pass
+   ```
 
-   The above statements are in the test script, you activate them by selective commenting in/out.
+   The above statements are in the test script, you activate them by selectively commenting in/out.
    Depending on your hardware you may have to use another id for I2C (e.g. 'X' for pyboard), specify scl and/or sda pins or use `machine.SoftI2C` (instead of `machine.I2C` which is hard I2C). See https://docs.micropython.org/en/latest/library/machine.I2C.html for more info.
    It is recommended to test your I2C setup with a scan.
 
@@ -75,8 +78,10 @@ In case the following API description is not sufficient have a look there.
    With a PCF8574A the address range is 0x38..0x3F (i.e. 56..63 decimal), 0x3F by default.
 
 3. Import the driver and instantiate the lcd class:
-   `from lcd_i2c8574 import I2cLcd`
-   `lcd = I2cLcd(i2c, 0x27, (20, 4))`
+   ```
+   from lcd_i2c8574 import I2cLcd
+   lcd = I2cLcd(i2c, 0x27, (20, 4))
+   ```
    Of course you use `lcd_i2c8574_x` or `lcd_i2c8574_m` for another driver version.
    Instead of`0x27` you may have to use another number as the I2C device address of your backpack chip as noted above. Note that `i2c_addr=0x27` is a default of the I2cLcd class and can be omitted.
    `(20, 4)` are the dimensions of my LCD: 20 charaters x 4 lines. Depending on your display you may need other numbers like (8, 2), (16, 1), (16, 2), (16, 4), (20, 2), (40, 1) or (40, 2). `dim=(16, 2)` is the default and again may be omitted
@@ -101,9 +106,11 @@ In case the following API description is not sufficient have a look there.
    `lcd.clear()` if necessary, clears the display and moves to (0, 0).
 
 7. Define custom characters and write them (not available in extended driver):
-   `lcd.define_char(0, b'\x00\x0a\x1f\x1f\x0e\x04\x00\x00')    # Heart`
-   `lcd.define_char(1, b'\x01\x03\x05\x09\x09\x0b\x1b\x18')    # Notes`
-   define two custom characters. 0 and 1 are the RAM slots. We have 7 of them, but slot 6 and 7 are already used to define '\\\\\' and '~'.  Note: All slots are used already in the extended driver.
+   ```
+   lcd.define_char(0, b'\x00\x0a\x1f\x1f\x0e\x04\x00\x00')    # Heart
+   lcd.define_char(1, b'\x01\x03\x05\x09\x09\x0b\x1b\x18')    # Notes
+   ```
+   define two custom characters. 0 and 1 are the RAM slots. We have 7 of them, but slots 6 and 7 are already used to define '\\\\' and '~'.  Note: All slots are used already in the extended driver.
    The second argument may be a bytes object (like in the above code) or a bytearray. It defines the character pixels bit by bit from top to bottom:
    `lcd.write(chr(0))` writes the character in the 0-th slot, a heart in our case.
 
